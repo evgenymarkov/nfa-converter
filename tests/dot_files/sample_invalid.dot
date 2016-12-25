@@ -1,0 +1,9 @@
+digraph Automaton {
+    "" [shape=none];
+    "1" [shape=circle]
+    "2" [shape=circle]
+
+    "" -> "" [label="ab"]
+    "1" -> "2" [label="a"]
+    "2" -> "1" [label="b"]
+}
