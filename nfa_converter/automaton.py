@@ -1,6 +1,7 @@
 import os
 from enum import Enum
-from typing import Set, Dict
+from queue import Queue
+from typing import FrozenSet, Set, Dict
 
 
 class AutomatonType(Enum):
@@ -84,8 +85,8 @@ class Automaton:
         :param state: строка-идентификатор состояния.
         :return: словарь пар вида "символ: множество_состояний"
         """
-        if state not in self._states:
-            raise StateNotFoundError(f"{state} отсутствует в списке состояний.")
+        if state not in self._transitions:
+            return {}
         return self._transitions[state]
 
     def get_type(self) -> AutomatonType:
@@ -170,4 +171,104 @@ class Automaton:
 
 
 def nfa_to_dfa(nfa: Automaton) -> Automaton:
-    pass
+    """
+    Получение по заданному недетерминированному автомату эквивалентного
+    детерминированного. Использован алгоритм описанный в следующем документе:
+    http://web.cecs.pdx.edu/~harry/compilers/slides/LexicalPart3.pdf
+    :param nfa: недетерминированный автомат.
+    :return: эквивалентный детерминированный автомат.
+    """
+    dfa_transitions: Dict[FrozenSet[str], Dict[str, FrozenSet[str]]] = {}
+    dfa_states: Dict[FrozenSet[str], str] = {}
+    unmarked_states = Queue()
+
+    state_mark = "A"
+    eps_closure_start = frozenset(_epsilon_closure(nfa, nfa.get_start_state()))
+    dfa_states[eps_closure_start] = state_mark
+    unmarked_states.put(eps_closure_start)
+
+    new_alphabet: Set[str] = set()
+    while not unmarked_states.empty():
+        current_dfa_state = unmarked_states.get()
+        dfa_transitions[current_dfa_state] = {}
+        for symbol in nfa.get_alphabet():
+            next_dfa_state = _epsilon_set_closure(nfa, _nfa_moves(nfa, current_dfa_state, symbol))
+            if len(next_dfa_state) > 0:
+                if next_dfa_state not in dfa_states:
+                    state_mark = chr(ord(state_mark) + 1)
+                    dfa_states[next_dfa_state] = state_mark
+                    unmarked_states.put(next_dfa_state)
+                dfa_transitions[current_dfa_state][symbol] = next_dfa_state
+                new_alphabet.add(symbol)
+
+    dfa = Automaton("DFA")
+    final_states = set()
+    for dfa_state in dfa_states:
+        # Группе состояний из НКА присваивается новый идентификатор и добавляется в ДКА
+        dfa.add_state(dfa_states[dfa_state])
+
+        # Если хотя бы одно состояние из НКА было конечным,
+        # то новое соответствующее состояние ДКА также будет конечным.
+        for nfa_state in dfa_state:
+            if nfa_state in nfa.get_final_states():
+                final_states.add(dfa_states[dfa_state])
+                break
+
+    for dfa_state in dfa_states:
+        for symbol, dst in dfa_transitions[dfa_state].items():
+            from_state_mark = dfa_states[dfa_state]
+            to_state_mark = dfa_states[dst]
+            dfa.add_transition(from_state_mark, to_state_mark, symbol)
+
+    dfa.set_start_state("A")
+    dfa.set_final_states(final_states)
+    dfa.set_alphabet(new_alphabet)
+
+    return dfa
+
+
+def _nfa_moves(nfa: Automaton, from_states: FrozenSet[str], symbol: str) -> FrozenSet[str]:
+    """
+    Получение набора состояний достижимых из указанного множества по заданному переходу.
+    :param nfa: недетерминированный автомат.
+    :param from_states: множество состояний из которых будет призведён поиск достижимых.
+    :param symbol: символ перехода.
+    :return: неизменяемое множество состояний достижимых из указанных по заданному символу.
+    """
+    moves: Set[str] = set()
+
+    for state in from_states:
+        if symbol in nfa.get_transitions_from(state):
+            moves.update(nfa.get_transitions_from(state)[symbol])
+
+    return frozenset(moves)
+
+
+def _epsilon_set_closure(nfa: Automaton, from_states: FrozenSet[str]) -> FrozenSet[str]:
+    """
+    Получение состояний, которые достижимы по ε-переходам из множества указанных состояний.
+    :param nfa: недетерминированный автомат.
+    :param from_states: множество состояний из которых будет произведён поиск достижимых.
+    :return: неизменяемое множество состояний достижимых из указанных по ε-переходам.
+    """
+    eps_closure = set()
+    for state in from_states:
+        eps_closure.update(_epsilon_closure(nfa, state))
+    return frozenset(eps_closure)
+
+
+def _epsilon_closure(nfa: Automaton, state: str) -> Set[str]:
+    """
+    Получение состояний, которые достижимы по ε-переходам из указанного состояния.
+    :param nfa: недетерминированный автомат.
+    :param state: состояние из которого будет поиск достижимых состояний.
+    :return: множество состояний достижимых по ε-переходам.
+    """
+    reachable_states: Set[str] = set()
+    reachable_states.add(state)
+
+    if "ε" in nfa.get_transitions_from(state):
+        for dst in nfa.get_transitions_from(state)["ε"]:
+            reachable_states |= _epsilon_closure(nfa, dst)
+
+    return reachable_states
