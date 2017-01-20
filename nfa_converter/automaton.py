@@ -32,7 +32,7 @@ class Automaton:
         """
         self._name = name
         self._states = set()
-        self._start_state = None
+        self._start_states = set()
         self._final_states = set()
         self._transitions = dict()
         self._alphabet = set()
@@ -51,12 +51,12 @@ class Automaton:
         """
         return self._states
 
-    def get_start_state(self) -> str:
+    def get_start_states(self) -> Set[str]:
         """
-        Получение стартовой вершины.
-        :return: строка-идентификатор стартовой вершины.
+        Получение множества стартовых вершин.
+        :return: строки-идентификаторы стартовых вершин.
         """
-        return self._start_state
+        return self._start_states
 
     def get_final_states(self) -> Set[str]:
         """
@@ -132,14 +132,15 @@ class Automaton:
             self._transitions[from_state][symbol] = set()
         self._transitions[from_state][symbol].add(to_state)
 
-    def set_start_state(self, state: str):
+    def set_start_states(self, states: set):
         """
-        Указание стартового состояния.
-        :param state: строка-идентификатор стартового состояния.
+        Указание множества начальных состояний.
+        :param states: набор идентификаторов стартовых состояний.
         """
-        if state not in self._states:
-            raise StateNotFoundError(f"\"{state}\" нет в списке состояний.")
-        self._start_state = state
+        for new_state in states:
+            if new_state not in self._states:
+                raise StateNotFoundError(f"\"{new_state}\" нет в списке состояний.")
+            self._start_states.add(new_state)
 
     def set_final_states(self, states: set):
         """
@@ -164,7 +165,7 @@ class Automaton:
         """
         return f"Automaton {self._name}{os.linesep}" + \
                f"States: {self._states}{os.linesep}" + \
-               f"Start state: {self._start_state}{os.linesep}" + \
+               f"Start state: {self._start_states}{os.linesep}" + \
                f"Final states: {self._final_states}{os.linesep}" + \
                f"Alphabet: {self._alphabet}{os.linesep}" + \
                f"Transitions: {self._transitions}"
@@ -183,7 +184,7 @@ def nfa_to_dfa(nfa: Automaton) -> Automaton:
     unmarked_states = Queue()
 
     state_mark = "A"
-    eps_closure_start = frozenset(_epsilon_closure(nfa, nfa.get_start_state()))
+    eps_closure_start = frozenset(_epsilon_set_closure(nfa, frozenset(nfa.get_start_states())))
     dfa_states[eps_closure_start] = state_mark
     unmarked_states.put(eps_closure_start)
 
@@ -220,7 +221,7 @@ def nfa_to_dfa(nfa: Automaton) -> Automaton:
             to_state_mark = dfa_states[dst]
             dfa.add_transition(from_state_mark, to_state_mark, symbol)
 
-    dfa.set_start_state("A")
+    dfa.set_start_states({"A"})
     dfa.set_final_states(final_states)
     dfa.set_alphabet(new_alphabet)
 

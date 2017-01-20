@@ -40,15 +40,14 @@ def read(dot_str) -> Automaton:
     # Алфавит - множество из всех неповторяющихся символов перехода
     # Символ ε в алфавит не входит
     alphabet = set()
+    start_states = set()
     start_state_set = False
     for edge in read_automaton.get_edges():
         source = _unquote(edge.get_source())
         destination = _unquote(edge.get_destination())
 
         if source == "":
-            if start_state_set:
-                raise InvalidAutomatonError("Указано более одного начального состояния.")
-            automaton.set_start_state(destination)
+            start_states.add(destination)
             start_state_set = True
             continue
 
@@ -62,9 +61,10 @@ def read(dot_str) -> Automaton:
             alphabet.add(transition_symbol)
         automaton.add_transition(source, destination, transition_symbol)
     automaton.set_alphabet(alphabet)
+    automaton.set_start_states(start_states)
 
     if not start_state_set:
-        raise InvalidAutomatonError("Не указано начальное состояние.")
+        raise InvalidAutomatonError("Не указано ни одно начальное состояние.")
     if len(final_states) == 0:
         raise InvalidAutomatonError("Должно быть хотя бы одно конечное состояние.")
 
@@ -93,9 +93,10 @@ def write(automaton: Automaton) -> str:
         dot_node = pydot.Node(_quote(state), **state_attrs)
         dot_graph.add_node(dot_node)
 
-    # Стрелка в начальное состояние
-    dot_edge = pydot.Edge(_quote(""), _quote(automaton.get_start_state()))
-    dot_graph.add_edge(dot_edge)
+    # Стрелки в начальные состояния
+    for start_state in automaton.get_start_states():
+        dot_edge = pydot.Edge(_quote(""), _quote(start_state))
+        dot_graph.add_edge(dot_edge)
 
     for src, transitions in automaton.get_all_transitions().items():
         for symbol, dst_states in transitions.items():

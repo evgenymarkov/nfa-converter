@@ -10,7 +10,7 @@ class ConversionTest(unittest.TestCase):
         for i in range(11):
             enfa.add_state(str(i))
 
-        enfa.set_start_state("0")
+        enfa.set_start_states({"0"})
         enfa.set_final_states({"10"})
         enfa.set_alphabet({"a", "b"})
 
