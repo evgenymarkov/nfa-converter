@@ -10,10 +10,12 @@
 
 6. run tests from pycharm
 
-NFA-ε
+<figure>
+  <figcaption>NFA-ε</figcaption>
+  <img src="docs/mokrushin_nfa.png">
+</figure>
 
-![eNFA](docs/mokrushin_nfa.png)
-
-DFA
-
-![eNFA](docs/mokrushin_dfa.png)
+<figure>
+  <figcaption>DFA</figcaption>
+  <img src="docs/mokrushin_dfa.png">
+</figure>
