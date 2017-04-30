@@ -11,7 +11,9 @@
 6. run tests from pycharm
 
 NFA-ε
+
 ![eNFA](docs/mokrushin_nfa.png)
 
 DFA
+
 ![eNFA](docs/mokrushin_dfa.png)
